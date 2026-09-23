@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { fetchTableData, updateDustbinData, DataRow } from '../lib/supabase'
+import { fetchTableData, updateTableData, DataRow } from '../lib/supabase'
 import { Loader2, RefreshCw, AlertCircle, Pencil, Check, X } from 'lucide-react'
 
 interface DataTableProps {
@@ -22,13 +22,15 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
       header: 'bg-blue-600',
       card: 'border-blue-200',
       accent: 'text-blue-600',
-      button: 'bg-blue-600 hover:bg-blue-700'
+      button: 'bg-blue-600 hover:bg-blue-700',
+      input: 'focus:border-blue-500 focus:ring-blue-500'
     },
     green: {
       header: 'bg-green-600',
       card: 'border-green-200',
       accent: 'text-green-600',
-      button: 'bg-green-600 hover:bg-green-700'
+      button: 'bg-green-600 hover:bg-green-700',
+      input: 'focus:border-green-500 focus:ring-green-500'
     }
   }
 
@@ -69,11 +71,11 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
     try {
       setSaving(true)
       setUpdateError(null)
-      const updated = await updateDustbinData(id, value)
+      const updated = await updateTableData(tableName, id, value)
       setData((current) => current.map((row) => row.id === id ? updated : row))
       setEditingId(null)
     } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : 'Could not update dustbin data.')
+      setUpdateError(err instanceof Error ? err.message : `Could not update ${title.toLowerCase()}.`)
     } finally {
       setSaving(false)
     }
@@ -135,11 +137,9 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Data Value
                   </th>
-                  {tableName === 'dustbin' && (
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  )}
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -157,47 +157,45 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
                           step="1"
                           value={editValue}
                           onChange={(event) => setEditValue(event.target.value)}
-                          aria-label={`Dustbin ${row.id} data value`}
-                          className="w-32 rounded-md border border-gray-300 px-3 py-2 text-lg focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                          aria-label={`${title} ${row.id} data value`}
+                          className={`w-32 rounded-md border border-gray-300 px-3 py-2 text-lg focus:outline-none focus:ring-1 ${colors.input}`}
                           disabled={saving}
                         />
                       ) : (
                         <span className="text-lg font-semibold text-gray-900">{row.data}</span>
                       )}
                     </td>
-                    {tableName === 'dustbin' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {editingId === row.id ? (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              onClick={() => saveEdit(row.id)}
-                              disabled={saving}
-                              className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                              Save
-                            </button>
-                            <button
-                              onClick={() => { setEditingId(null); setUpdateError(null) }}
-                              disabled={saving}
-                              aria-label="Cancel editing"
-                              className="rounded-md p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      {editingId === row.id ? (
+                        <div className="inline-flex items-center gap-2">
                           <button
-                            onClick={() => startEditing(row)}
-                            aria-label={`Edit dustbin ${row.id}`}
-                            className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
+                            onClick={() => saveEdit(row.id)}
+                            disabled={saving}
+                            className={`inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${colors.button}`}
                           >
-                            <Pencil className="h-4 w-4" />
-                            Edit
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            Save
                           </button>
-                        )}
-                      </td>
-                    )}
+                          <button
+                            onClick={() => { setEditingId(null); setUpdateError(null) }}
+                            disabled={saving}
+                            aria-label="Cancel editing"
+                            className="rounded-md p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditing(row)}
+                          aria-label={`Edit ${title.toLowerCase()} ${row.id}`}
+                          className={`inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-50 ${colors.accent}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Edit
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

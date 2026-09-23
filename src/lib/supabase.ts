@@ -10,16 +10,20 @@ export interface DataRow {
   data: number
 }
 
-export async function updateDustbinData(id: number, value: number): Promise<DataRow> {
+export async function updateTableData(
+  tableName: 'water' | 'dustbin',
+  id: number,
+  value: number
+): Promise<DataRow> {
   const { data, error } = await supabase
-    .from('dustbin')
+    .from(tableName)
     .update({ data: value })
     .eq('id', id)
     .select('id, data')
     .single()
 
   if (error) {
-    throw new Error(`Error updating dustbin data: ${error.message}`)
+    throw new Error(`Error updating ${tableName} data: ${error.message}`)
   }
 
   return data

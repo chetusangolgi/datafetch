@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { fetchTableData, DataRow } from '../lib/supabase'
-import { Loader2, RefreshCw, AlertCircle } from 'lucide-react'
+import { fetchTableData, updateDustbinData, DataRow } from '../lib/supabase'
+import { Loader2, RefreshCw, AlertCircle, Pencil, Check, X } from 'lucide-react'
 
 interface DataTableProps {
   tableName: 'water' | 'dustbin'
@@ -12,6 +12,10 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
   const [data, setData] = useState<DataRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
 
   const colorClasses = {
     blue: {
@@ -48,6 +52,32 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
   }, [tableName])
 
   const total = data.reduce((sum, row) => sum + row.data, 0)
+
+  const startEditing = (row: DataRow) => {
+    setEditingId(row.id)
+    setEditValue(String(row.data))
+    setUpdateError(null)
+  }
+
+  const saveEdit = async (id: number) => {
+    const value = Number(editValue)
+    if (editValue.trim() === '' || !Number.isSafeInteger(value)) {
+      setUpdateError('Enter a valid whole number.')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setUpdateError(null)
+      const updated = await updateDustbinData(id, value)
+      setData((current) => current.map((row) => row.id === id ? updated : row))
+      setEditingId(null)
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : 'Could not update dustbin data.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -105,6 +135,11 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Data Value
                   </th>
+                  {tableName === 'dustbin' && (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -116,13 +151,62 @@ export default function DataTable({ tableName, title, color }: DataTableProps) {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-lg font-semibold text-gray-900">{row.data}</span>
+                      {editingId === row.id ? (
+                        <input
+                          type="number"
+                          step="1"
+                          value={editValue}
+                          onChange={(event) => setEditValue(event.target.value)}
+                          aria-label={`Dustbin ${row.id} data value`}
+                          className="w-32 rounded-md border border-gray-300 px-3 py-2 text-lg focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                          disabled={saving}
+                        />
+                      ) : (
+                        <span className="text-lg font-semibold text-gray-900">{row.data}</span>
+                      )}
                     </td>
+                    {tableName === 'dustbin' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        {editingId === row.id ? (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              onClick={() => saveEdit(row.id)}
+                              disabled={saving}
+                              className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                              Save
+                            </button>
+                            <button
+                              onClick={() => { setEditingId(null); setUpdateError(null) }}
+                              disabled={saving}
+                              aria-label="Cancel editing"
+                              className="rounded-md p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditing(row)}
+                            aria-label={`Edit dustbin ${row.id}`}
+                            className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {updateError && (
+            <p role="alert" className="mt-3 text-sm text-red-700">{updateError}</p>
+          )}
 
           <div className={`mt-6 p-4 bg-gray-50 rounded-lg border-l-4 border-${color}-500`}>
             <div className="flex items-center justify-between">
